@@ -7,20 +7,24 @@ require "net/http"
 require "json"
 require 'dotenv/load'
 
-class Grupo < BaseIs
+require 'byebug'
+
+class Detalhes < BaseIs
 
     FILIAL = ENV.fetch('COD_FILIAL')
     URL_SHOP9 = ENV.fetch('URL_SHOP9')
     SENHA = ENV.fetch('SENHA_SHOP9') #"31011996"
 
-    def grupo_cadastrado(tipo)
+
+    
+    def produto_series(path)
         time = (Time.now + 3.hours).to_i.to_s
         metodo = "get"
        
         @signature = Base64.strict_encode64(OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), SENHA, "#{metodo}#{time}"))
 
-        url = URI("#{URL_SHOP9}/aux/classes")
-
+        url = URI("#{URL_SHOP9}/#{path}")
+        
         http = Net::HTTP.new(url.host, url.port);
 
         request = Net::HTTP::Get.new(url)
@@ -33,26 +37,13 @@ class Grupo < BaseIs
         request["Content-Type"] = "application/json"
 
         begin
-            response = http.request(request)            
-
-            classes = JSON.parse(response.read_body)['dados']
+            response = http.request(request)
             
-            #classes.each do |classe|
-            #    debugger
-            #    x = 1
-            #    if classe['codigo'] == tipo
-            #       return classe['nome']
-            #   end
-            #end
-            classe = classes.select{|a| a['codigo'] == tipo.to_s}
-            return classe[0]['nome']
-            #return "outros"
+            return JSON.parse(response.read_body)['dados']
+           
         rescue => exception
             puts exception
-            return "outros"
+            return false
         end
     end
-
-
-    
 end
