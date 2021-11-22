@@ -22,7 +22,7 @@ class Cliente < BaseIs
        
         @signature = Base64.strict_encode64(OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), SENHA, "#{metodo}#{time}"))
 
-        initial = 9
+        initial = 9000
         nome_cliente = "#{data['first_name']} #{data['last_name']}"
 
         cpf = false
@@ -110,15 +110,15 @@ class Cliente < BaseIs
 
 
     def payload_cliente(data)
-        
+       
         return {
             "Nome": "abc#{data['first_name']} #{data['last_name']}",
             "Fantasia": "#{data['company']}",
             "Tipo": "C",
             "FisicaJuridica": "F",
-            "CpfCnpj": '05553514169',#"#{data['cpf']}",
+            "CpfCnpj": "#{data['cpf']}",
             "Rg": "",            
-            "Cep": data['postcode'],
+            "Cep": data['postcode'].delete('-'),
             "Endereco": data['address_1'],
             "Numero": nil,
             "Complemento": "Bl 131",
@@ -177,10 +177,12 @@ class Cliente < BaseIs
 
         begin
             response = http.request(request)
-            debugger
-            x = 1
-            return JSON.parse(response.read_body)['dados']['codigoGerado']
-           
+            body = JSON.parse(response.read_body)
+            if body['sucesso'] == false
+                return body['mensagem'].scan(/\d+/)[1]
+            else           
+                return body['dados']['codigoGerado']
+           end
         rescue => exception
             puts exception
             return false

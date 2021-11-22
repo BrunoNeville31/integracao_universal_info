@@ -9,7 +9,7 @@ class BaseIs
     AUTH = ENV.fetch('AUTH')
 
     def initialize
-        url = URI("#{URL}/auth/?serie=HIEAPA-600759-ROCT&codfilial=2")
+        url = URI("#{URL}/auth/?serie=HIEAPA-606254-UWVK&codfilial=3")
 
         http = Net::HTTP.new(url.host, url.port)
         request = Net::HTTP::Get.new(url)

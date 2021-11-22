@@ -84,9 +84,9 @@ class ProdutosWoocommerce < BaseWc
        
         estoque = produtos_shop.estoque(data['codigo'])
 
-        return false if estoque <= 5
+        puts "estoque #{estoque}"
 
-        
+        return false if estoque <= 1        
       
         categories = categorias()  #categorias Woocommerce
         categories_shop = Grupo.new.grupo_cadastrado(data['codigoClasse']) #categoria Shop9
@@ -119,7 +119,7 @@ class ProdutosWoocommerce < BaseWc
 
         if produtos_img == false
             puts "Sem Imagem"
-            return false
+            #return false
         else
             produtos_img.each do |produto_img|
                 foto = produtos_shop.foto_posicao(data['codigo'], produto_img['posicao'] )
@@ -151,9 +151,9 @@ class ProdutosWoocommerce < BaseWc
             manage_stock: true,
             stock_quantity: estoque.to_i,
             dimensions: {
-                length: data['comprimento'],
-                width: data['largura'],
-                height: data['altura']
+                length: data['comprimento'].to_s,
+                width: data['largura'].to_s,
+                height: data['altura'].to_s
             },
             categories: [
               {
@@ -292,8 +292,9 @@ class ProdutosWoocommerce < BaseWc
         if response.code == "201" || response.code == "200"
             return true
         else
-            return false
             puts response.read_body
+            return false
+            
         end       
         
     end

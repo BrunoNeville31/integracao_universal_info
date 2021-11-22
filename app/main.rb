@@ -28,8 +28,7 @@ scheduler.in '60m' do#cron '* * * * *' do
             produtos.each do |produto|
 
                 consulta_produto = woocommerce.consulta_produto(produto['codigo'])
-                puts "PRODUTO #{produto['codigo']}"
-
+                puts "PRODUTO #{produto['codigo']}"               
               
                 if consulta_produto == false
                     #Cadastrar Produto
@@ -63,6 +62,7 @@ scheduler.in '60m' do#cron '* * * * *' do
 
                     elsif produto['tipo'] == 2
                         puts "produto grade #{produto['codigo']}"
+                        
                         payload = woocommerce.payload(produto)
 
                         if payload != false
@@ -98,7 +98,7 @@ scheduler.in '60m' do#cron '* * * * *' do
                         data = woocommerce.payload(produto)                        
                         
                         begin
-                            if data[:stock_quantity] >= 5
+                            if data[:stock_quantity] >= 1
                                 woocommerce.atualiza(dados_produtos['id'], data)
                                 puts "Atualizado Produto #{produto['codigo']} - #{produto['nome']}"
                             else
@@ -126,7 +126,7 @@ scheduler.in '60m' do#cron '* * * * *' do
                         data = woocommerce.payload(produto)                        
                         
                         begin
-                            if data[:stock_quantity] >= 5
+                            if data[:stock_quantity] >= 1
                                 woocommerce.atualiza(dados_produtos['id'], data)
                                 puts "Atualizado Produto #{produto['codigo']} - #{produto['nome']}"
                             else
@@ -159,10 +159,11 @@ scheduler.in '1s' do
     puts 'Iniciando vendas'
 
     todas_vendas.each do |venda|
+        status_next = ['processing', 'on-hold', 'completed', 'cancelled', 'refunded', 'failed', 'trash']
         
         next if venda['line_items'].empty?
-        #next if venda['status'] != 'on-hold'
-            
+        next if status_next.include? venda['status']
+        
         codigo_cliente = cliente.consulta_cliente(venda['billing'])
 
         produtos = []

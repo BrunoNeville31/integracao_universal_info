@@ -121,9 +121,9 @@ class Produtos < BaseIs
 
         begin
             response = http.request(request)
-            return JSON.parse(response.read_body)['dados']['estoqueFiliais'].select{|f| f['codigoFilial'] == 2}[0]['estoqueAtual']
+            return JSON.parse(response.read_body)['dados']['estoqueFiliais'].select{|f| f['codigoFilial'] == 3}[0]['estoqueAtual']
         rescue => exception
-            puts exception
+            puts "Produto não cadastro na Filial 3"
             return 0
         end
     end
