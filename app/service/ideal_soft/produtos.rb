@@ -41,6 +41,34 @@ class Produtos < BaseIs
         end
     end
 
+    def consulta_produto(nproduto)
+        time = (Time.now + 3.hours).to_i.to_s
+        metodo = "get"
+       
+        @signature = Base64.strict_encode64(OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), SENHA, "#{metodo}#{time}"))
+
+        url = URI("#{URL_SHOP9}/produtos/detalhes/#{nproduto}")
+
+        http = Net::HTTP.new(url.host, url.port);
+
+        request = Net::HTTP::Get.new(url)
+
+        request["Authorization"] = "Token #{@token}"
+        request["signature"] = @signature
+        request["CodFilial"] = FILIAL
+        request["Timestamp"] = time
+        request["Accept"] = "application/json"
+        request["Content-Type"] = "application/json"
+        
+        begin
+            response = http.request(request)
+            return JSON.parse(response.read_body)['dados']
+        rescue => exception
+            puts exception
+            return false
+        end
+    end
+
     
     def foto_posicao(idprod, posicao)
         time = (Time.now + 3.hours).to_i.to_s

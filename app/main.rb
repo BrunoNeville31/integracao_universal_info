@@ -1,5 +1,7 @@
 require 'rufus-scheduler'
 require 'byebug'
+require 'time'
+require 'active_support/time'
 require_relative 'service/ideal_soft/produtos'
 require_relative 'service/woocommerce/produtos'
 require_relative 'service/woocommerce/vendas'
@@ -28,8 +30,7 @@ scheduler.in '60m' do#cron '* * * * *' do
                 consulta_produto = woocommerce.consulta_produto(produto['codigo'])
                 puts "PRODUTO #{produto['codigo']}"
 
-                debugger
-                x = 1
+              
                 if consulta_produto == false
                     #Cadastrar Produto
                     puts "PRODUTO TIPO = #{produto['tipo']}"
@@ -155,15 +156,78 @@ scheduler.in '1s' do
     vendas = VendasWoocommerce.new
     cliente = Cliente.new
     todas_vendas = vendas.consulta_vendas
+    puts 'Iniciando vendas'
+
     todas_vendas.each do |venda|
-        #next if venda['line_items'].empty?
-       
-        codigo_cliente = cliente.consulta_cliente(venda['shipping'])
-
-        #payload_cliente = cliente.payload_cliente(venda['shipping'])
-
-        #cliente.cadastro_cliente(payload_cliente)
         
+        next if venda['line_items'].empty?
+        #next if venda['status'] != 'on-hold'
+            
+        codigo_cliente = cliente.consulta_cliente(venda['billing'])
+
+        produtos = []
+        venda['line_items'].each do |produto|
+            dados_prod = Produtos.new.consulta_produto(produto['sku'])
+            
+            produtos.append({
+                "Codigo": dados_prod['codigo'],
+                "CodigoCor": nil,
+                "CodigoTamanho": nil,
+                "Quantidade": produto['quantity'],
+                "PrecoUnitario": (produto['total'].to_f / produto['quantity']),
+                "DescontoUnitario": 0.00
+            })
+        end
+        
+
+        recebimentos = []
+        
+        qtd_parcelas = venda['meta_data'].select{|a| a['key'] == 'Parcelas'}[0]['value'].to_i
+        valor_parcela = venda['total'].to_f / qtd_parcelas
+
+        for index in 1..qtd_parcelas do 
+            recebimentos.append({
+                "ValorParcelas": valor_parcela,
+                "CodigoAdministradora": nil,
+                "Vencimento": nil,
+                "Nsu": "#{Time.now.to_i}",
+                "QuantidadeParcelas": qtd_parcelas,
+                "Tipo": "C" 
+            })
+        end
+        
+
+        payload = {
+            "CpfCnpj": venda['billing']['cpf'],
+            "CodigoOperacao": "500",
+            "Data": "#{Time.now}",
+            "Produtos": produtos,
+            "Recebimentos": recebimentos,
+            "DadosEntrega": {
+                "Valor": venda['total'].to_f,
+                "OpcoesFretePagoPor": "O",
+                "PesoBruto": 0.0,
+                "PesoLiquido": 0.0,
+                "Volume": 0.0,
+                "NaoSomarFreteTotalNota": true,
+                "OutroEndereco": {
+                "Cep": venda['shipping']['postcode'].delete("-"),
+                "Endereco": venda['shipping']['address_1'],
+                "Numero": venda['shipping']['number'],
+                "Bairro": venda['shipping']['neighborhood'],
+                "Cidade":venda['shipping']['city'],
+                "Uf": venda['shipping']['state']
+                }
+            }
+        }
+
+        
+        realiza_venda = cliente.realiza_venda(payload)
+        if realiza_venda == true
+            vendas.atualiza_venda(venda['id'], 'processing')
+        else
+            puts "VENDA NÂO REALIZADA"
+        end
     end
 
     puts "FIM"

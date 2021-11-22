@@ -22,10 +22,10 @@ class Cliente < BaseIs
        
         @signature = Base64.strict_encode64(OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), SENHA, "#{metodo}#{time}"))
 
-        initial = 1
+        initial = 9
         nome_cliente = "#{data['first_name']} #{data['last_name']}"
 
-        real_nome = false
+        cpf = false
 
         begin
             while initial > -1 do
@@ -46,32 +46,77 @@ class Cliente < BaseIs
                 clientes = JSON.parse(response.read_body)['dados']
     
                 clientes.each do |cliente|
-    
-                    if cliente['nome'] == nome_cliente
-                        real_nome = nome_cliente
+                    if cliente['cpfCnpj'] == data['cpf']
+                        cpf = cliente['cpfCnpj']
                         return cliente['codigo']
                     end
                     
                 end
-                if real_nome == false
+                if cpf == false
                     initial += 1
                 end
             end
         rescue => exception
             initial = -1
+            puts exception
             puts("Cadastrando Cliente #{data['first_name']}")
+            numero = cadastro_cliente(payload_cliente(data))
+            cadastra_contato(numero, data)
             return cadastro_cliente(payload_cliente(data))            
         end        
     end
 
 
+    def cadastra_contato(numero, payload)
+       
+        data = {
+            
+            "Nome": "#{payload['first_name']} #{payload['last_name']}",                    
+            "Telefone": payload['phone'],            
+            "Email": payload['email']
+            
+        }
+
+        time = (Time.now + 3.hours).to_i.to_s
+        metodo = "post"
+        body = Base64.strict_encode64(data.to_json)
+       
+        @signature = Base64.strict_encode64(OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), SENHA, "#{metodo}#{time}#{body}"))
+
+        url = URI("#{URL_SHOP9}/clientes/contatos/#{numero}")
+        
+        http = Net::HTTP.new(url.host, url.port);
+
+        request = Net::HTTP::Post.new(url)
+
+        request["Authorization"] = "Token #{@token}"
+        request["signature"] = @signature
+        request["CodFilial"] = FILIAL
+        request["Timestamp"] = time
+        request["Accept"] = "application/json"
+        request["Content-Type"] = "application/json"
+        request.body = data.to_json        
+        
+        begin
+            response = http.request(request)
+       
+            return JSON.parse(response.read_body)['dados']['codigoGerado']
+           
+        rescue => exception
+            puts exception
+            return false
+        end
+    end
+
+
     def payload_cliente(data)
+        
         return {
-            "Nome": "#{data['first_name']} #{data['last_name']}",
+            "Nome": "abc#{data['first_name']} #{data['last_name']}",
             "Fantasia": "#{data['company']}",
             "Tipo": "C",
             "FisicaJuridica": "F",
-            "CpfCnpj": "",
+            "CpfCnpj": '05553514169',#"#{data['cpf']}",
             "Rg": "",            
             "Cep": data['postcode'],
             "Endereco": data['address_1'],
@@ -132,8 +177,42 @@ class Cliente < BaseIs
 
         begin
             response = http.request(request)
-            
+            debugger
+            x = 1
             return JSON.parse(response.read_body)['dados']['codigoGerado']
+           
+        rescue => exception
+            puts exception
+            return false
+        end
+    end
+
+    def realiza_venda(data)
+        time = (Time.now + 3.hours).to_i.to_s
+        metodo = "post"
+        body = Base64.strict_encode64(data.to_json)
+       
+        @signature = Base64.strict_encode64(OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), SENHA, "#{metodo}#{time}#{body}"))
+
+        url = URI("#{URL_SHOP9}/vendas/")
+        
+        http = Net::HTTP.new(url.host, url.port);
+
+        request = Net::HTTP::Post.new(url)
+
+        request["Authorization"] = "Token #{@token}"
+        request["signature"] = @signature
+        request["CodFilial"] = FILIAL
+        request["Timestamp"] = time
+        request["Accept"] = "application/json"
+        request["Content-Type"] = "application/json"
+        request.body = data.to_json        
+
+        begin
+            response = http.request(request)
+            puts "VENDA RESPOSTA"
+            puts response.body
+            return JSON.parse(response.read_body)['sucesso']
            
         rescue => exception
             puts exception
