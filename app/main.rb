@@ -14,7 +14,7 @@ shop = Produtos.new
 
 scheduler = Rufus::Scheduler.new
 
-scheduler.in '60m' do#cron '* * * * *' do 
+scheduler.cron "0 */3 * * *" do #cron "0 */3 * * *" do 
     puts 'INICIANDO SINCRONISMO'
     initial = 1
 
@@ -29,17 +29,17 @@ scheduler.in '60m' do#cron '* * * * *' do
 
                 consulta_produto = woocommerce.consulta_produto(produto['codigo'])
                 puts "PRODUTO #{produto['codigo']}"               
-              
+                
                 if consulta_produto == false
                     #Cadastrar Produto
                     puts "PRODUTO TIPO = #{produto['tipo']}"
                     if produto['tipo'] == 0
 
-                        payload = woocommerce.payload(produto)
+                        payload = woocommerce.payload(produto, false)
                         if payload != false
                             puts "QUANTIDADE DO PRODUTO = #{payload[:stock_quantity]}"
                             
-                            if payload[:stock_quantity] >= 5
+                            if payload[:stock_quantity] >= 1
                                 woocommerce.cadastro(payload)
                                 puts "Cadastrado Produto #{produto['codigo']} - #{produto['nome']}"
                             else
@@ -63,10 +63,10 @@ scheduler.in '60m' do#cron '* * * * *' do
                     elsif produto['tipo'] == 2
                         puts "produto grade #{produto['codigo']}"
                         
-                        payload = woocommerce.payload(produto)
+                        payload = woocommerce.payload(produto, false)
 
                         if payload != false
-                            if payload[:stock_quantity] >= 5
+                            if payload[:stock_quantity] >= 1
                                 id_produto = woocommerce.cadastro(payload)
                                 puts "Cadastrado Produto #{produto['codigo']} - #{produto['nome']}"
                             end
@@ -95,7 +95,7 @@ scheduler.in '60m' do#cron '* * * * *' do
                             woocommerce.deleta_imagem(dado_produto)                            
                         end                        
 
-                        data = woocommerce.payload(produto)                        
+                        data = woocommerce.payload(produto, true)                        
                         
                         begin
                             if data[:stock_quantity] >= 1
@@ -106,7 +106,7 @@ scheduler.in '60m' do#cron '* * * * *' do
                             end
 
                             data[:images].each do |image|
-                                woocommerce.deleta_imagem(image[:id].to_s) 
+                                woocommerce.deleta_imagem(image) 
                             end
                         rescue StandardError => e                           
                             puts "SEM ATUALIZAÇÂO PARA PRODUTO #{produto['codigo']}"
@@ -123,7 +123,7 @@ scheduler.in '60m' do#cron '* * * * *' do
                             woocommerce.deleta_imagem(dado_produto)                            
                         end                        
 
-                        data = woocommerce.payload(produto)                        
+                        data = woocommerce.payload(produto, true)                        
                         
                         begin
                             if data[:stock_quantity] >= 1
@@ -152,7 +152,7 @@ scheduler.in '60m' do#cron '* * * * *' do
     end
 end
 
-scheduler.in '1s' do
+scheduler.cron '0 * * * *' do #'0 * * * *' 
     vendas = VendasWoocommerce.new
     cliente = Cliente.new
     todas_vendas = vendas.consulta_vendas
@@ -163,7 +163,8 @@ scheduler.in '1s' do
         
         next if venda['line_items'].empty?
         next if status_next.include? venda['status']
-        
+        debugger
+        x = 1
         codigo_cliente = cliente.consulta_cliente(venda['billing'])
 
         produtos = []

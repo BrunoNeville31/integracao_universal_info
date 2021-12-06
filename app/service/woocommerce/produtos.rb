@@ -79,7 +79,7 @@ class ProdutosWoocommerce < BaseWc
         end 
     end
 
-    def payload(data)
+    def payload(data, atualizar = true)
         produtos_shop = Produtos.new 
        
         estoque = produtos_shop.estoque(data['codigo'])
@@ -129,39 +129,63 @@ class ProdutosWoocommerce < BaseWc
                 f.binmode
                 f.close               
                 
-                cad_foto = cadastrar_foto(filename,"publish")
+                if atualizar == false
+                    cad_foto = cadastrar_foto(filename,"publish")
                 
-                if cad_foto
-                    cadastro_foto.append({
-                        src: cad_foto[:url],
-                        id: cad_foto[:id]
-                    })
-                end               
+                    if cad_foto
+                        cadastro_foto.append({
+                            src: cad_foto[:url],
+                            id: cad_foto[:id]
+                        })
+                    end       
+                end        
             end            
         end
         
-
-        return {
-            name: data['nome'],
-            sku: data['codigo'],
-            type: tipo,
-            regular_price: data['precos'][0]['preco'].to_s,
-            description: data['observacao1'],
-            short_description: data['observacao2'],
-            manage_stock: true,
-            stock_quantity: estoque.to_i,
-            dimensions: {
-                length: data['comprimento'].to_s,
-                width: data['largura'].to_s,
-                height: data['altura'].to_s
-            },
-            categories: [
-              {
-                id: id_categoria
-              }              
-            ],
-            images: cadastro_foto
-        }
+        if atualizar == false
+            return {
+                name: data['nome'],
+                sku: data['codigo'],
+                type: tipo,
+                regular_price: data['precos'][0]['preco'].to_s,
+                description: data['observacao1'],
+                short_description: data['observacao2'],
+                manage_stock: true,
+                stock_quantity: estoque.to_i,
+                dimensions: {
+                    length: data['comprimento'].to_s,
+                    width: data['largura'].to_s,
+                    height: data['altura'].to_s
+                },
+                categories: [
+                  {
+                    id: id_categoria
+                  }              
+                ],
+                images: cadastro_foto
+            }
+        else
+            return {
+                name: data['nome'],
+                sku: data['codigo'],
+                type: tipo,
+                regular_price: data['precos'][0]['preco'].to_s,
+                description: data['observacao1'],
+                short_description: data['observacao2'],
+                manage_stock: true,
+                stock_quantity: estoque.to_i,
+                dimensions: {
+                    length: data['comprimento'].to_s,
+                    width: data['largura'].to_s,
+                    height: data['altura'].to_s
+                },
+                categories: [
+                  {
+                    id: id_categoria
+                  }              
+                ]
+            }
+        end
 
     end
 
@@ -177,6 +201,7 @@ class ProdutosWoocommerce < BaseWc
         form_data = []
         request.set_form form_data, 'multipart/form-data'
         response = https.request(request)
+        
         if response.code.to_i == 201 || response.code.to_i == 200
             return true
         else
