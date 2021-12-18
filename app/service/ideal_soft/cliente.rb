@@ -15,6 +15,29 @@ class Cliente < BaseIs
     URL_SHOP9 = ENV.fetch('URL_SHOP9')
     SENHA = ENV.fetch('SENHA_SHOP9') #"31011996"
 
+    def consulta_recibo(codigo)
+        time = (Time.now + 3.hours).to_i.to_s
+        metodo = "get"
+       
+        @signature = Base64.strict_encode64(OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), SENHA, "#{metodo}#{time}"))
+
+        
+                puts "Consultando Recibo = #{codigo}"
+                url = URI("#{URL_SHOP9}/vendas/#{codigo}")
+            
+                http = Net::HTTP.new(url.host, url.port);
+    
+                request = Net::HTTP::Get.new(url)
+    
+                request["Authorization"] = "Token #{@token}"
+                request["signature"] = @signature
+                request["CodFilial"] = FILIAL
+                request["Timestamp"] = time
+                request["Accept"] = "application/json"
+                request["Content-Type"] = "application/json"
+                response = http.request(request)
+                return JSON.parse(response.read_body)
+    end
 
     def consulta_cliente(data)
         time = (Time.now + 3.hours).to_i.to_s

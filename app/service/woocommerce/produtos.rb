@@ -86,7 +86,8 @@ class ProdutosWoocommerce < BaseWc
 
         puts "estoque #{estoque}"
 
-        return false if estoque <= 1        
+        return false if estoque < 1 
+
       
         categories = categorias()  #categorias Woocommerce
         categories_shop = Grupo.new.grupo_cadastrado(data['codigoClasse']) #categoria Shop9
@@ -117,41 +118,42 @@ class ProdutosWoocommerce < BaseWc
 
         cadastro_foto = []
 
-        if produtos_img == false
-            puts "Sem Imagem"
-            #return false
-        else
-            produtos_img.each do |produto_img|
-                foto = produtos_shop.foto_posicao(data['codigo'], produto_img['posicao'] )
-                filename = "#{data['codigo']}_#{produto_img['posicao']}.jpg"
-                f = File.new(filename, "wb")
-                f.write(foto)
-                f.binmode
-                f.close               
-                
-                if atualizar == false
-                    cad_foto = cadastrar_foto(filename,"publish")
-                
-                    if cad_foto
-                        cadastro_foto.append({
-                            src: cad_foto[:url],
-                            id: cad_foto[:id]
-                        })
-                    end       
-                end        
-            end            
-        end
-        
+        #if produtos_img == false
+        #    puts "Sem Imagem"
+        #    #return false
+        #else
+        #    produtos_img.each do |produto_img|
+        #        foto = produtos_shop.foto_posicao(data['codigo'], produto_img['posicao'] )
+        #        filename = "#{data['codigo']}_#{produto_img['posicao']}.jpg"
+        #       f = File.new(filename, "wb")
+        #        f.write(foto)
+        #        f.binmode
+        #       f.close               
+        #       
+        #        if atualizar == false
+        #            cad_foto = cadastrar_foto(filename,"publish")
+        #        
+        #            if cad_foto
+        #                cadastro_foto.append({
+        #                    src: cad_foto[:url],
+        #                    id: cad_foto[:id]
+        #                })
+        #            end       
+        #        end        
+        #    end            
+        #end
+        puts "PESO #{data['pesoBruto'].to_s}"
         if atualizar == false
             return {
                 name: data['nome'],
                 sku: data['codigo'],
                 type: tipo,
-                regular_price: data['precos'][0]['preco'].to_s,
+                regular_price: data['precos'].select{|a| a['tabela'] == 'LJ SITE'}[0]['preco'].to_s,
                 description: data['observacao1'],
                 short_description: data['observacao2'],
                 manage_stock: true,
                 stock_quantity: estoque.to_i,
+                weight: data['pesoBruto'].to_s,
                 dimensions: {
                     length: data['comprimento'].to_s,
                     width: data['largura'].to_s,
@@ -161,19 +163,20 @@ class ProdutosWoocommerce < BaseWc
                   {
                     id: id_categoria
                   }              
-                ],
-                images: cadastro_foto
+                ]                
             }
+            #images: cadastro_foto
         else
             return {
                 name: data['nome'],
                 sku: data['codigo'],
                 type: tipo,
-                regular_price: data['precos'][0]['preco'].to_s,
+                regular_price: data['precos'].select{|a| a['tabela'] == 'LJ SITE'}[0]['preco'].to_s,
                 description: data['observacao1'],
                 short_description: data['observacao2'],
                 manage_stock: true,
                 stock_quantity: estoque.to_i,
+                weight: data['pesoBruto'].to_s,
                 dimensions: {
                     length: data['comprimento'].to_s,
                     width: data['largura'].to_s,

@@ -14,7 +14,7 @@ shop = Produtos.new
 
 scheduler = Rufus::Scheduler.new
 
-scheduler.cron "0 */3 * * *" do #cron "0 */3 * * *" do 
+scheduler.in '1s' do #cron "0 */3 * * *" do 
     puts 'INICIANDO SINCRONISMO'
     initial = 1
 
@@ -26,7 +26,11 @@ scheduler.cron "0 */3 * * *" do #cron "0 */3 * * *" do
         unless produtos.nil?           
             
             produtos.each do |produto|
+                
+                tabela = Produtos.new.detalhes_produto(produto['urlTabelaPreco'])
+                table = tabela['dados']['precos'].select{|a| a['tabela'] == 'LJ SITE' && a['preco'] > 0}.blank?
 
+               
                 consulta_produto = woocommerce.consulta_produto(produto['codigo'])
                 puts "PRODUTO #{produto['codigo']}"               
                 
@@ -36,26 +40,27 @@ scheduler.cron "0 */3 * * *" do #cron "0 */3 * * *" do
                     if produto['tipo'] == 0
 
                         payload = woocommerce.payload(produto, false)
-                        if payload != false
+                        if payload != false && table == false
                             puts "QUANTIDADE DO PRODUTO = #{payload[:stock_quantity]}"
                             
                             if payload[:stock_quantity] >= 1
                                 woocommerce.cadastro(payload)
                                 puts "Cadastrado Produto #{produto['codigo']} - #{produto['nome']}"
+
                             else
                                 puts "Sem estoque"
-                                unless payload[:images].empty?
-                                    payload[:images].each do |image|
-                                        woocommerce.deleta_imagem(image[:id].to_s)
-                                    end
-                                end                                
+                                #unless payload[:images].empty?
+                                #    payload[:images].each do |image|
+                                #        woocommerce.deleta_imagem(image[:id].to_s)
+                                #    end
+                                #end                                
                             end
 
-                            unless payload[:images].empty?
-                                payload[:images].each do |image|
-                                    woocommerce.deleta_imagem(image[:id].to_s)
-                                end
-                            end 
+                            #unless payload[:images].empty?
+                            #    payload[:images].each do |image|
+                            #        woocommerce.deleta_imagem(image[:id].to_s)
+                            #    end
+                            #end 
                         end
                         
                         #Produto Unico
@@ -65,7 +70,7 @@ scheduler.cron "0 */3 * * *" do #cron "0 */3 * * *" do
                         
                         payload = woocommerce.payload(produto, false)
 
-                        if payload != false
+                        if payload != false && table == false
                             if payload[:stock_quantity] >= 1
                                 id_produto = woocommerce.cadastro(payload)
                                 puts "Cadastrado Produto #{produto['codigo']} - #{produto['nome']}"
@@ -91,24 +96,26 @@ scheduler.cron "0 */3 * * *" do #cron "0 */3 * * *" do
                     if produto['tipo'] == 0
                         dados_produtos = JSON.parse(consulta_produto)[0]
 
-                        dados_produtos['images'].each do |dado_produto|
-                            woocommerce.deleta_imagem(dado_produto)                            
-                        end                        
+                        #dados_produtos['images'].each do |dado_produto|
+                        #    woocommerce.deleta_imagem(dado_produto)                            
+                        #end                        
 
                         data = woocommerce.payload(produto, true)                        
                         
                         begin
-                            if data[:stock_quantity] >= 1
+                            if data[:stock_quantity] >= 1 && table == false
                                 woocommerce.atualiza(dados_produtos['id'], data)
                                 puts "Atualizado Produto #{produto['codigo']} - #{produto['nome']}"
                             else
+                                puts "PRODUTO DELETADO #{produto['nome']}"
                                 woocommerce.deleta_produto(dados_produtos['id'])
                             end
 
-                            data[:images].each do |image|
-                                woocommerce.deleta_imagem(image) 
-                            end
-                        rescue StandardError => e                           
+                            #data[:images].each do |image|
+                            #    woocommerce.deleta_imagem(image) 
+                            #end
+                        rescue StandardError => e 
+                            puts e                          
                             puts "SEM ATUALIZAÇÂO PARA PRODUTO #{produto['codigo']}"
                            
                         end
@@ -119,24 +126,26 @@ scheduler.cron "0 */3 * * *" do #cron "0 */3 * * *" do
 
                         dados_produtos = JSON.parse(consulta_produto)[0]
 
-                        dados_produtos['images'].each do |dado_produto|
-                            woocommerce.deleta_imagem(dado_produto)                            
-                        end                        
+                        #dados_produtos['images'].each do |dado_produto|
+                        #    woocommerce.deleta_imagem(dado_produto)                            
+                        #end                        
 
                         data = woocommerce.payload(produto, true)                        
                         
                         begin
-                            if data[:stock_quantity] >= 1
+                            if data[:stock_quantity] >= 1 && table == false
                                 woocommerce.atualiza(dados_produtos['id'], data)
                                 puts "Atualizado Produto #{produto['codigo']} - #{produto['nome']}"
                             else
+                                puts "PRODUTO DELETADO #{produto['nome']}"
                                 woocommerce.deleta_produto(dados_produtos['id'])
                             end
 
-                            data[:images].each do |image|
-                                woocommerce.deleta_imagem(image[:id].to_s) 
-                            end
-                        rescue StandardError => e                           
+                            #data[:images].each do |image|
+                            #    woocommerce.deleta_imagem(image[:id].to_s) 
+                            #end
+                        rescue StandardError => e   
+                            puts e                        
                             puts "SEM ATUALIZAÇÂO PARA PRODUTO #{produto['codigo']}"
                            
                         end
@@ -157,14 +166,16 @@ scheduler.cron '0 * * * *' do #'0 * * * *'
     cliente = Cliente.new
     todas_vendas = vendas.consulta_vendas
     puts 'Iniciando vendas'
+    
+    #recibo = "8f09360a-71e0-4ab2-be4b-356d0bb4e1b5"
+    #abc = cliente.consulta_recibo(recibo)
 
     todas_vendas.each do |venda|
-        status_next = ['processing', 'on-hold', 'completed', 'cancelled', 'refunded', 'failed', 'trash']
+        status_next = ['pending', 'processing', 'completed', 'cancelled', 'refunded', 'failed', 'trash']
         
         next if venda['line_items'].empty?
         next if status_next.include? venda['status']
-        debugger
-        x = 1
+       
         codigo_cliente = cliente.consulta_cliente(venda['billing'])
 
         produtos = []
@@ -190,7 +201,7 @@ scheduler.cron '0 * * * *' do #'0 * * * *'
         for index in 1..qtd_parcelas do 
             recebimentos.append({
                 "ValorParcelas": valor_parcela,
-                "CodigoAdministradora": nil,
+                "CodigoAdministradora": 1,
                 "Vencimento": nil,
                 "Nsu": "#{Time.now.to_i}",
                 "QuantidadeParcelas": qtd_parcelas,
@@ -225,8 +236,9 @@ scheduler.cron '0 * * * *' do #'0 * * * *'
 
         
         realiza_venda = cliente.realiza_venda(payload)
+        
         if realiza_venda == true
-            vendas.atualiza_venda(venda['id'], 'processing')
+            vendas.atualiza_venda(venda['id'], 'on-hold')
         else
             puts "VENDA NÂO REALIZADA"
         end
