@@ -14,7 +14,7 @@ shop = Produtos.new
 
 scheduler = Rufus::Scheduler.new
 
-scheduler.in '1s' do #cron "0 */3 * * *" do 
+scheduler.cron "0 */3 * * *" do #cron "0 */3 * * *" do 
     puts 'INICIANDO SINCRONISMO'
     initial = 1
 
@@ -25,11 +25,12 @@ scheduler.in '1s' do #cron "0 */3 * * *" do
         det = Detalhes.new
         unless produtos.nil?           
             
-            produtos.each do |produto|
-                
+            produtos.each do |produto|                
+               
                 tabela = Produtos.new.detalhes_produto(produto['urlTabelaPreco'])
                 table = tabela['dados']['precos'].select{|a| a['tabela'] == 'LJ SITE' && a['preco'] > 0}.blank?
 
+                puts "TABELA VALOR 0 = #{table}"
                
                 consulta_produto = woocommerce.consulta_produto(produto['codigo'])
                 puts "PRODUTO #{produto['codigo']}"               
@@ -115,9 +116,13 @@ scheduler.in '1s' do #cron "0 */3 * * *" do
                             #    woocommerce.deleta_imagem(image) 
                             #end
                         rescue StandardError => e 
-                            puts e                          
-                            puts "SEM ATUALIZAÇÂO PARA PRODUTO #{produto['codigo']}"
-                           
+                            if dados_produtos.present? && table == true
+                                puts "PRODUTO DELETADO #{produto['nome']}"
+                                woocommerce.deleta_produto(dados_produtos['id'])
+                            else
+                                puts e                          
+                                puts "SEM ATUALIZAÇÂO PARA PRODUTO #{produto['codigo']}"
+                            end
                         end
                        
                         #Produto Unico
@@ -145,9 +150,13 @@ scheduler.in '1s' do #cron "0 */3 * * *" do
                             #    woocommerce.deleta_imagem(image[:id].to_s) 
                             #end
                         rescue StandardError => e   
-                            puts e                        
-                            puts "SEM ATUALIZAÇÂO PARA PRODUTO #{produto['codigo']}"
-                           
+                            if dados_produtos.present? && table == true
+                                puts "PRODUTO DELETADO #{produto['nome']}"
+                                woocommerce.deleta_produto(dados_produtos['id'])
+                            else
+                                puts e                          
+                                puts "SEM ATUALIZAÇÂO PARA PRODUTO #{produto['codigo']}"
+                            end
                         end
 
                     end
@@ -161,17 +170,21 @@ scheduler.in '1s' do #cron "0 */3 * * *" do
     end
 end
 
-scheduler.cron '0 * * * *' do #'0 * * * *' 
+scheduler.in '1s' do #'0 * * * *' 
     vendas = VendasWoocommerce.new
     cliente = Cliente.new
     todas_vendas = vendas.consulta_vendas
     puts 'Iniciando vendas'
     
-    #recibo = "8f09360a-71e0-4ab2-be4b-356d0bb4e1b5"
-    #abc = cliente.consulta_recibo(recibo)
+    recibo = "fa3c54aa-b927-4cf7-8d0b-662641c46b7e"
+    abc = cliente.consulta_recibo(recibo)
+    
+    debugger
+    x = 1
+    
 
     todas_vendas.each do |venda|
-        status_next = ['pending', 'processing', 'completed', 'cancelled', 'refunded', 'failed', 'trash']
+        status_next = ['pending', 'on-hold','completed', 'cancelled', 'refunded', 'failed', 'trash']
         
         next if venda['line_items'].empty?
         next if status_next.include? venda['status']
@@ -197,7 +210,7 @@ scheduler.cron '0 * * * *' do #'0 * * * *'
         
         qtd_parcelas = venda['meta_data'].select{|a| a['key'] == 'Parcelas'}[0]['value'].to_i
         valor_parcela = venda['total'].to_f / qtd_parcelas
-
+        
         for index in 1..qtd_parcelas do 
             recebimentos.append({
                 "ValorParcelas": valor_parcela,

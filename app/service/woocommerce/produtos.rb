@@ -93,7 +93,7 @@ class ProdutosWoocommerce < BaseWc
         categories_shop = Grupo.new.grupo_cadastrado(data['codigoClasse']) #categoria Shop9
         
         tipo = data['tipo'] == 2 ? "variable" : "simple"
-
+        tipo = 'simple'
         id_categoria = false
 
         begin
@@ -144,6 +144,7 @@ class ProdutosWoocommerce < BaseWc
         #end
         puts "PESO #{data['pesoBruto'].to_s}"
         if atualizar == false
+            puts "PRECO #{data['precos'].select{|a| a['tabela'] == 'LJ SITE'}[0]['preco'].to_s}"
             return {
                 name: data['nome'],
                 sku: data['codigo'],
@@ -167,6 +168,7 @@ class ProdutosWoocommerce < BaseWc
             }
             #images: cadastro_foto
         else
+            puts "PRECO #{data['precos'].select{|a| a['tabela'] == 'LJ SITE'}[0]['preco'].to_s}"
             return {
                 name: data['nome'],
                 sku: data['codigo'],
